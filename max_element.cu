@@ -29,7 +29,7 @@ __global__ void gpuProcess(int n, double *arr){
 
 int main(void){
     clock_t start, diff;
-    int N = 50000000;
+    int N = 200000000;
 
     double *h_arr = new double[N];
     for (int i = 0; i < N; i++) {
@@ -41,18 +41,19 @@ int main(void){
     cpuProcess(N, h_arr);
     diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
     std::cout << "CPU MAX: " << h_arr[0] << std::endl;
-    printf("Time taken: %d milliseconds", diff);
+    printf("Time taken for cpu: %d milliseconds\n\n", diff);
 
     start = clock();
     double *d_arr;
     cudaMalloc(&d_arr, sizeof(double)*N);
     cudaMemcpy(d_arr, h_arr, N*sizeof(double), cudaMemcpyHostToDevice);
     diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
-    printf("Time taken to copy arr to gpu: %d milliseconds", diff);
+    printf("Time taken to copy arr to gpu: %d milliseconds\n", diff);
   
     int numThreads = N;
     int threadsPerBlock = 256;
 
+    start = clock();
     do {
         numThreads = N/16;
         if (numThreads == 0) numThreads = 1;
@@ -67,6 +68,8 @@ int main(void){
     
     cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
     std::cout << "GPU MAX: " << h_arr[0] << std::endl;
+    diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
+    printf("Time taken for gpu: %d milliseconds\n", diff);
 
     // Free memory
     cudaFree(d_arr);
