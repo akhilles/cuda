@@ -30,8 +30,6 @@ int main(void){
         arr[i] = r;
     }
 
-    initVars<<<1, 1>>>();
-    cudaDeviceSynchronize();
     // Run kernel on 1M elements on the GPU
     gpuProcess<<<1, 1>>>(N, arr);
     cudaDeviceSynchronize();
