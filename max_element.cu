@@ -1,6 +1,8 @@
 #include <iostream>
 #include <math.h>
-#include <cstdint>
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
 
 __device__ double d_max, d_min;
 
