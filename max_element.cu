@@ -32,7 +32,7 @@ int main(void){
     int threadsPerBlock = 256;
 
     do {
-        numThreads /= 10;
+        numThreads = N/16;
         if (numThreads == 0) numThreads = 1;
         if (numThreads < threadsPerBlock) threadsPerBlock = numThreads;
         int numBlocks = (numThreads + threadsPerBlock - 1)/threadsPerBlock;
@@ -41,7 +41,7 @@ int main(void){
         std::cout << "Launching " << numThreads << " threads: " << numBlocks << " blocks and " << threadsPerBlock << " threads/block" << std::endl;
 
         cudaDeviceSynchronize();
-        N = numThreads;
+        N = numBlocks * threadsPerBlock;
     } while(numThreads > 1);
     
 
