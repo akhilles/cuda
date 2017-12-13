@@ -1,6 +1,17 @@
 #include <iostream>
 #include <math.h>
 #include <cstdint>
+#include <time.h>
+
+void cpuProcess(int n, double *arr){
+    double localMax = -1;
+    
+    for (int i = 0; i < n; i ++){
+        if (arr[i] > localMax) localMax = arr[i];
+    }
+    
+    arr[0] = localMax;
+}
 
 __global__ void gpuProcess(int n, double *arr){
     double localMax = -1;
@@ -16,6 +27,7 @@ __global__ void gpuProcess(int n, double *arr){
 }
 
 int main(void){
+    clock_t start_t, end_t, total_t;
     int N = 50000000;
 
     double *h_arr = new double[N];
@@ -24,11 +36,16 @@ int main(void){
         h_arr[i] = r;
     }
 
+    start_t = clock();
+    cpuProcess(N, h_arr);
+    end_t = clock();
+    total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+    std::cout << "CPU MAX: " << h_arr[0] << " in " << total_t << " seconds" << std::endl;
+
     double *d_arr;
     cudaMalloc(&d_arr, sizeof(double)*N);
     cudaMemcpy(d_arr, h_arr, N*sizeof(double), cudaMemcpyHostToDevice);
   
-
     int numThreads = N;
     int threadsPerBlock = 256;
 
@@ -44,8 +61,8 @@ int main(void){
         N = numBlocks * threadsPerBlock;
     } while(numThreads > 1);
     
-    cudaMemcpy(h_arr, d_arr, N*sizeof(double), cudaMemcpyDeviceToHost);
-    std::cout << "MAX: " << h_arr[0] << std::endl;
+    cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
+    std::cout << "GPU MAX: " << h_arr[0] << std::endl;
 
     // Free memory
     cudaFree(d_arr);
