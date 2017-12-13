@@ -1,51 +1,19 @@
 #include <iostream>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <cuda_runtime.h>
+#include <cstdint>
 
-__device__ double d_max, d_min;
-
-__device__ void AtomicMax(double * const address, const double value){
-	if (* address >= value) return
-	uint64_t * const address_as_i = (uint64_t *)address;
-    uint64_t old = * address_as_i, assumed;
-	do {
-        assumed = old;
-		if (__longlong_as_double(assumed) >= value) break;
-        old = atomicCAS(address_as_i, assumed, __double_as_longlong(value));
-    } while (assumed != old);
-}
-
-__device__ void AtomicMin(double * const address, const double value){
-	if (* address <= value) return
-	uint64_t * const address_as_i = (uint64_t *)address;
-    uint64_t old = * address_as_i, assumed;
-	do {
-        assumed = old;
-		if (__longlong_as_double(assumed) <= value) break;
-        old = atomicCAS(address_as_i, assumed, __double_as_longlong(value));
-    } while (assumed != old);
-}
-
-__global__ void initVars(){
-    d_max = -1;
-    d_min = 1001;
-}
 
 __global__ void gpuProcess(int n, double *arr){
-    double localMax = -1, localMin = 1001;
+    double localMax = -1;
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
     for (int i = index; i < n; i += stride){
         if (arr[i] > localMax) localMax = arr[i];
-        if (arr[i] < localMin) localMin = arr[i];
     }
 
-    AtomicMax(&d_max, localMax);
-    AtomicMin(&d_min, localMin);
+    arr[index] = localMax;
 }
 
 int main(void){
@@ -68,9 +36,7 @@ int main(void){
     gpuProcess<<<1, 1>>>(N, arr);
     cudaDeviceSynchronize();
 
-    typeof(d_max) h_max;
-    cudaMemcpyFromSymbol(&h_max, "d_max", sizeof(h_max), 0, cudaMemcpyDeviceToHost);
-    std::cout << "MAX: " << h_max << std::endl;
+    std::cout << "MAX: " << arr[0] << std::endl;
 
     // Free memory
     cudaFree(arr);
