@@ -18,7 +18,7 @@ __global__ void gpuProcess(int n, double *arr){
 
 int main(void){
 
-    int N = 5000000;
+    int N = 50000000;
     double *arr;
 
     // Allocate Unified Memory – accessible from CPU or GPU
@@ -31,7 +31,7 @@ int main(void){
     }
 
     // Run kernel on 1M elements on the GPU
-    gpuProcess<<<100, 256>>>(N, arr);
+    gpuProcess<<<1000, 512>>>(N, arr);
     cudaDeviceSynchronize();
 
     std::cout << "MAX: " << arr[0] << std::endl;
