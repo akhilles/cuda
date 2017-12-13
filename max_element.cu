@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <time.h>
 #include <cstdio>
+#include <stdio.h>
+#include <stdlib.h>
 
 void cpuProcess(int n, double *arr){
     double localMax = -1;
@@ -27,9 +29,9 @@ __global__ void gpuProcess(int n, double *arr){
     arr[index] = localMax;
 }
 
-int main(void){
+int main(int argc, char *argv[]){
     clock_t start, diff;
-    int N = 200000000;
+    int N = atoi(argv[1]) * 1000000;
 
     double *h_arr = new double[N];
     for (int i = 0; i < N; i++) {
@@ -65,14 +67,11 @@ int main(void){
 
         N = numBlocks * threadsPerBlock;
     } while(numThreads > 1);
+    
+    cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
+    std::cout << "GPU MAX: " << h_arr[0] << std::endl;
     diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
     printf("Time taken for gpu: %d milliseconds\n", diff);
-    
-    start = clock();
-    cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
-    diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
-    printf("Time taken to copy max to host: %d milliseconds\n", diff);
-    std::cout << "GPU MAX: " << h_arr[0] << std::endl;
 
     // Free memory
     cudaFree(d_arr);
