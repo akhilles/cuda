@@ -25,7 +25,7 @@ int main(void){
     }
 
     double *d_arr;
-    cudaMalloc(&d_arr, sizeof(double)*N)
+    cudaMalloc(&d_arr, sizeof(double)*N);
     cudaMemcpy(d_arr, h_arr, N*sizeof(double), cudaMemcpyHostToDevice);
   
 
@@ -45,7 +45,7 @@ int main(void){
     } while(numThreads > 1);
     
     cudaMemcpy(h_arr, d_arr, N*sizeof(double), cudaMemcpyDeviceToHost);
-    std::cout << "MAX: " << arr[0] << std::endl;
+    std::cout << "MAX: " << h_arr[0] << std::endl;
 
     // Free memory
     cudaFree(d_arr);
