@@ -1,36 +1,36 @@
 #include <iostream>
 #include <math.h>
 
-__device__ double gMax, gMin;
+__device__ double d_max, d_min;
 
-__device__ void AtomicMax(double * const address, const double value)
-{
-	if (* address >= value)
-	{
-		return;
-	}
-
+__device__ void AtomicMax(double * const address, const double value){
+	if (* address >= value) return
 	uint64 * const address_as_i = (uint64 *)address;
     uint64 old = * address_as_i, assumed;
-
-	do 
-	{
+	do {
         assumed = old;
-		if (__longlong_as_double(assumed) >= value)
-		{
-			break;
-		}
-		
+		if (__longlong_as_double(assumed) >= value) break;
+        old = atomicCAS(address_as_i, assumed, __double_as_longlong(value));
+    } while (assumed != old);
+}
+
+__device__ void AtomicMin(double * const address, const double value){
+	if (* address <= value) return
+	uint64 * const address_as_i = (uint64 *)address;
+    uint64 old = * address_as_i, assumed;
+	do {
+        assumed = old;
+		if (__longlong_as_double(assumed) <= value) break;
         old = atomicCAS(address_as_i, assumed, __double_as_longlong(value));
     } while (assumed != old);
 }
 
 __global__ void initVars(){
-    gMax = -1;
-    gMin = 1001;
+    d_max = -1;
+    d_min = 1001;
 }
 
-__global__ void gpuMax(int n, float *arr){
+__global__ void gpuProcess(int n, float *arr){
     double localMax = -1, localMin = 1001;
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -40,6 +40,9 @@ __global__ void gpuMax(int n, float *arr){
         if (arr[i] > localMax) localMax = arr[i];
         if (arr[i] < localMin) localMin = arr[i];
     }
+
+    AtomicMax(&d_max, localMax)
+    AtomicMin(&d_min, localMin)
 }
 
 int main(void){
@@ -56,21 +59,17 @@ int main(void){
         arr[i] = r;
     }
 
+    initVars<<<1, 1>>>();
+    cudaDeviceSynchronize();
     // Run kernel on 1M elements on the GPU
-    gpuMax<<<1, 1>>>(N, arr);
-
-    // Wait for GPU to finish before accessing on host
+    gpuProcess<<<1, 1>>>(N, arr);
     cudaDeviceSynchronize();
 
-    // Check for errors (all values should be 3.0f)
-    float maxError = 0.0f;
-    for (int i = 0; i < N; i++)
-        maxError = fmax(maxError, fabs(y[i]-3.0f));
-    std::cout << "Max error: " << maxError << std::endl;
+    typeof(d_max) h_max;
+    cudaMemcpyFromSymbol(&h_max, "d_max", sizeof(h_max), 0, cudaMemcpyDeviceToHost);
+    std::cout << "MAX: " << h_max << std::endl;
 
     // Free memory
-    cudaFree(x);
-    cudaFree(y);
-  
+    cudaFree(arr);
     return 0;
 }
