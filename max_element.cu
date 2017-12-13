@@ -5,8 +5,8 @@ __device__ double d_max, d_min;
 
 __device__ void AtomicMax(double * const address, const double value){
 	if (* address >= value) return
-	uint64 * const address_as_i = (uint64 *)address;
-    uint64 old = * address_as_i, assumed;
+	uint64_t * const address_as_i = (uint64_t *)address;
+    uint64_t old = * address_as_i, assumed;
 	do {
         assumed = old;
 		if (__longlong_as_double(assumed) >= value) break;
@@ -16,8 +16,8 @@ __device__ void AtomicMax(double * const address, const double value){
 
 __device__ void AtomicMin(double * const address, const double value){
 	if (* address <= value) return
-	uint64 * const address_as_i = (uint64 *)address;
-    uint64 old = * address_as_i, assumed;
+	uint64_t * const address_as_i = (uint64_t *)address;
+    uint64_t old = * address_as_i, assumed;
 	do {
         assumed = old;
 		if (__longlong_as_double(assumed) <= value) break;
@@ -30,7 +30,7 @@ __global__ void initVars(){
     d_min = 1001;
 }
 
-__global__ void gpuProcess(int n, float *arr){
+__global__ void gpuProcess(int n, double *arr){
     double localMax = -1, localMin = 1001;
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,8 +41,8 @@ __global__ void gpuProcess(int n, float *arr){
         if (arr[i] < localMin) localMin = arr[i];
     }
 
-    AtomicMax(&d_max, localMax)
-    AtomicMin(&d_min, localMin)
+    AtomicMax(&d_max, localMax);
+    AtomicMin(&d_min, localMin);
 }
 
 int main(void){
