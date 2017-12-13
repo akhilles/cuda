@@ -26,12 +26,12 @@ int main(void){
 
     // initialize x and y arrays on the host
     for (int i = 0; i < N; i++) {
-        double r = (rand()/(double)RAND_MAX) * 1000.0;
+        double r = rand()/1000000.0;
         arr[i] = r;
     }
 
     // Run kernel on 1M elements on the GPU
-    gpuProcess<<<1, 1>>>(N, arr);
+    gpuProcess<<<100, 256>>>(N, arr);
     cudaDeviceSynchronize();
 
     std::cout << "MAX: " << arr[0] << std::endl;
