@@ -1,0 +1,50 @@
+" float loc=12; \n"
+" for (int i=0; i < NWITEMS/2; i++) { \n"
+" loc+= tileA[get_global_id(0)%(NWITEMS/2)*NWITEMS/2+i]*tileB[i*get_global_size(1)/2+get_global_id(1)%(get_global_size(1)/2)]; \n"
+" } tileC[get_global_id(0)%(get_global_size(0)/2)*get_global_size(1)/2+get_global_id(1)%(get_global_size(1)/2)]+=12; \n"
+" C[get_global_id(0)*get_global_size(1)+get_global_id(1)]=loc;\n"
+
+
+"barrier(CLK_LOCAL_MEM_FENCE); \n"
+ " for (int j=0; j< size1; j++) { \n"
+"event_t ev[1]; \n"
+" ev[0] = async_work_group_copy(&tileC[(j*size2)],&C[(j+h1*size1)*get_global_size(1)+h2*size2], size2,0); \n"
+"wait_group_events(1,ev ); \n"
+" } \n"
+
+
+
+
+
+
+
+
+
+
+
+
+
+" for (int j=0; j< size1; j++) { \n"
+"event_t ev[2]; \n"
+" ev[0] = async_work_group_copy(tileA, &A[(j+h1*size1)*NWITEMS+hh*16], 16,0); \n"
+" ev[1]= async_work_group_copy(tileB, &B[(j+hh*16)*get_global_size(1)+h2*size2], size2,0); \n"
+"wait_group_events(2,ev ); \n"
+
+" } \n"
+
+" float loc=0; \n"
+" for (int i=0; i < 16; i++) { \n"
+" loc+= tileA[get_global_id(0)%(16)*16+i]*tileB[i*size2+get_global_id(1)%(size2)]; \n"
+" } \n"
+"tileC[get_global_id(0)%(size1)*size2+get_global_id(1)%(size2)]+=loc; /n"
+
+
+
+
+"barrier(CLK_LOCAL_MEM_FENCE); \n"
+ " for (int j=0; j< size1; j++) { \n"
+"event_t ev[1]; \n"
+" ev[0] = async_work_group_copy(&C[(j+h1*size1)*get_global_size(1)+h2*size2],&tileC[(j*size2)], size2,0); \n"
+"wait_group_events(1,ev ); \n"
+
+" } \n"
