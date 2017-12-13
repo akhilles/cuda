@@ -2,8 +2,6 @@
 #include <math.h>
 #include <cstdint>
 
-#define THREADS_PER_BLOCK 256
-
 __global__ void gpuProcess(int n, double *arr){
     double localMax = -1;
 
@@ -18,7 +16,6 @@ __global__ void gpuProcess(int n, double *arr){
 }
 
 int main(void){
-
     int N = 50000000;
     double *arr;
 
@@ -31,13 +28,17 @@ int main(void){
         arr[i] = r;
     }
 
-    int numThreads = N;
+    int threadsPerBlock = 256;
 
     do {
-        numThreads /= 10;
+        int numThreads = N/10;
         if (numThreads == 0) numThreads = 1;
-        std::cout << "Launching " << numThreads << " threads" << std::endl;
-        gpuProcess<<<(numThreads + THREADS_PER_BLOCK - 1)/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(N, arr);
+        if (numThreads < threadsPerBlock) threadsPerBlock = numThreads;
+        int numBlocks = (numThreads + threadsPerBlock - 1)/threadsPerBlock;
+        gpuProcess<<<numBlocks, threadsPerBlock>>>(N, arr);
+
+        std::cout << "Launching " << numThreads << " threads: " << numBlocks << " blocks and " << threadsPerBlock << " threads/block" << std::endl;
+
         cudaDeviceSynchronize();
         N = numThreads;
     } while(numThreads > 1);
