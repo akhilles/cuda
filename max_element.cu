@@ -48,7 +48,7 @@ int main(void){
     cudaMalloc(&d_arr, sizeof(double)*N);
     cudaMemcpy(d_arr, h_arr, N*sizeof(double), cudaMemcpyHostToDevice);
     diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
-    printf("Time taken to copy arr to gpu: %d milliseconds\n", diff);
+    printf("Time taken to copy arr to device: %d milliseconds\n", diff);
   
     int numThreads = N;
     int threadsPerBlock = 256;
@@ -65,11 +65,14 @@ int main(void){
 
         N = numBlocks * threadsPerBlock;
     } while(numThreads > 1);
-    
-    cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
-    std::cout << "GPU MAX: " << h_arr[0] << std::endl;
     diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
     printf("Time taken for gpu: %d milliseconds\n", diff);
+    
+    start = clock();
+    cudaMemcpy(h_arr, d_arr, 1*sizeof(double), cudaMemcpyDeviceToHost);
+    diff = (clock() - start) * 1000 / CLOCKS_PER_SEC;
+    printf("Time taken to copy max to host: %d milliseconds\n", diff);
+    std::cout << "GPU MAX: " << h_arr[0] << std::endl;
 
     // Free memory
     cudaFree(d_arr);
