@@ -1,5 +1,6 @@
 #include <iostream>
 #include <math.h>
+#include <cstdint>
 
 __device__ double d_max, d_min;
 
