@@ -28,10 +28,11 @@ int main(void){
         arr[i] = r;
     }
 
+    int numThreads = N;
     int threadsPerBlock = 256;
 
     do {
-        int numThreads = N/10;
+        numThreads /= 10;
         if (numThreads == 0) numThreads = 1;
         if (numThreads < threadsPerBlock) threadsPerBlock = numThreads;
         int numBlocks = (numThreads + threadsPerBlock - 1)/threadsPerBlock;
