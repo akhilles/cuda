@@ -2,6 +2,7 @@
 #include <math.h>
 #include <cstdint>
 
+#define THREADS_PER_BLOCK 256
 
 __global__ void gpuProcess(int n, double *arr){
     double localMax = -1;
@@ -30,9 +31,17 @@ int main(void){
         arr[i] = r;
     }
 
-    // Run kernel on 1M elements on the GPU
-    gpuProcess<<<1000, 512>>>(N, arr);
-    cudaDeviceSynchronize();
+    int numThreads = N;
+
+    do {
+        numThreads /= 10;
+        if (numThreads == 0) numThreads = 1;
+        std::cout << "Launching " << numThreads << " threads" << std::endl;
+        gpuProcess<<<(numThreads + THREADS_PER_BLOCK - 1)/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(N, arr);
+        cudaDeviceSynchronize();
+        N = numThreads;
+    } while(numThreads > 1);
+    
 
     std::cout << "MAX: " << arr[0] << std::endl;
 
