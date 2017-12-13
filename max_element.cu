@@ -17,16 +17,17 @@ __global__ void gpuProcess(int n, double *arr){
 
 int main(void){
     int N = 50000000;
-    double *arr;
 
-    // Allocate Unified Memory – accessible from CPU or GPU
-    cudaMallocManaged(&arr, N*sizeof(double));
-
-    // initialize x and y arrays on the host
+    double *h_arr = new double[N];
     for (int i = 0; i < N; i++) {
         double r = rand()/1000000.0;
-        arr[i] = r;
+        h_arr[i] = r;
     }
+
+    double *d_arr;
+    cudaMalloc(&d_arr, sizeof(double)*N)
+    cudaMemcpy(d_arr, h_arr, N*sizeof(double), cudaMemcpyHostToDevice);
+  
 
     int numThreads = N;
     int threadsPerBlock = 256;
@@ -36,18 +37,17 @@ int main(void){
         if (numThreads == 0) numThreads = 1;
         if (numThreads < threadsPerBlock) threadsPerBlock = numThreads;
         int numBlocks = (numThreads + threadsPerBlock - 1)/threadsPerBlock;
-        gpuProcess<<<numBlocks, threadsPerBlock>>>(N, arr);
-
+        gpuProcess<<<numBlocks, threadsPerBlock>>>(N, d_arr);
         std::cout << "Launching " << numThreads << " threads: " << numBlocks << " blocks and " << threadsPerBlock << " threads/block" << std::endl;
-
         cudaDeviceSynchronize();
+
         N = numBlocks * threadsPerBlock;
     } while(numThreads > 1);
     
-
+    cudaMemcpy(h_arr, d_arr, N*sizeof(double), cudaMemcpyDeviceToHost);
     std::cout << "MAX: " << arr[0] << std::endl;
 
     // Free memory
-    cudaFree(arr);
+    cudaFree(d_arr);
     return 0;
 }
