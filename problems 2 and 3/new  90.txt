@@ -1,0 +1,12 @@
+ " for (int j=0; j< size1; j++) { \n"
+"event_t ev[2]; \n"
+" ev[0] = async_work_group_copy(&tileA[j*size2], &A[(j+h1*size1)*NWITEMS+hh*16], 16,0); \n"
+" ev[1]= async_work_group_copy(&tileB[j*size2], &B[(j+hh*16)*get_global_size(1)+h2*size2], size2,0); \n"
+"wait_group_events(2,ev ); \n"
+
+" } \n"
+
+" for (int j=0; j< size1; j++) { \n"
+"event_t ev[1]; \n"
+" ev[0] = async_work_group_copy(&C[(j+h1*size1)*get_global_size(1)+h2*size2],&tileC[(j*size2)], size2,0); \n"
+"wait_group_events(1,ev ); \n"

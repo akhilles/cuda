@@ -5,36 +5,46 @@
 #include <CL/cl.h>
 #include <stdio.h>
 #include <string.h>
-#define NWITEMS 512*2
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <time.h>
+#include <math.h>
+#define NWITEMS 512
 // A simple memset kernel
 const char *source =
 "__kernel void matmult( __global int *Graph,__global int *q,  __global int * prevstart, __global int * num, __global int * depth, __global int * search,  __global int * node  ) \n"
 "{ \n"
 " int NWITEMS = num[0]; \n"
-" while (node[0] < 0 && depth <NWITEMS) { \n"
-" int temp =q[get_global_id(0)]; \n"
-"int tdepth=depth[0]; \n"
-"barrier(CLK_GLOBAL_MEM_FENCE); \n"
+" int cont=1;\n"
+" while (node[0] < 0 && cont>0) { \n"
 
- " if ( temp == 1){ \n"
+
+ " if ( q[get_global_id(0)] > -1){ \n"
 
 " for (int i=0; i < NWITEMS; i++) { \n"
 " if( Graph[get_global_id(0)*NWITEMS+i] > -1){ \n"
 "  if (Graph[get_global_id(0)*NWITEMS+i] == search[0]){ \n"
 "    node[0]=i; \n"
+"    q[i] = get_global_id(0); \n"
 " }else{ \n"
-"if (q[i] == 0) { \n"
-"  q[i]=1;\n"
-" prevstart[depth[0]*NWITEMS+i]=get_global_id(0); \n"
+"if (q[i] == -1) { \n"
+"  q[i]=get_global_id(0);\n"
 "} \n"
 "} \n"
 " } \n"
 "} \n"
-"q[get_global_id(0)] =2; \n"
+
 "} \n"
 
-"barrier(CLK_GLOBAL_MEM_FENCE); \n"
-"depth[0]=tdepth+1; \n"
+"barrier(CLK_LOCAL_MEM_FENCE); \n"
+"depth[get_group_id(0)]=depth[get_group_id(0)]+1; \n"
+"cont=0;\n"
+" for ( int cc=0; cc<get_num_groups(0); cc++){\n"
+    " if (depth[cc] <NWITEMS){ \n"
+	" cont=1; \n"
+	" } \n"
+	" } \n"
  "barrier(CLK_GLOBAL_MEM_FENCE); \n"
 
 "} \n"
@@ -90,6 +100,64 @@ const char *source3 =
 " } \n"
 
 "} \n";
+ struct node{
+struct node * next;
+int index;
+};
+struct node * top;
+struct node * bot;
+int rbfs(int * Graph, int search, int * q, int dim, int width, int depth){
+int nwidth=0;
+if(depth== dim || width == 0) {return -1;}
+for (int j=0; j<width; j++){
+   int v= (*top).index;
+for (int i=0; i<dim; i++){
+ if (Graph[v*dim+i] > -1 && q[i]<0){
+  if (Graph[v*dim+i] == search){
+   q[i]=v;
+   return i;
+  }else{
+    struct node * n= (struct node *) malloc(sizeof(struct node));
+ (*n).index=i;
+ (*bot).next=n;
+ q[i]=v;
+ bot=n;
+    nwidth++;
+	}
+ }
+}
+top=(*top).next;
+}
+//printf(" depth %i", depth);
+return rbfs(Graph, search, q, dim, nwidth,depth+1);
+}
+
+int lbfs(int * Graph, int search, int * q, int dim, int width, int depth){
+
+while(top!=NULL) {
+
+   int v= (*top).index;
+for (int i=0; i<dim; i++){
+ if (Graph[v*dim+i] > -1 && q[i]<0){
+  if (Graph[v*dim+i] == search){
+   q[i]=v;
+   return i;
+  }else{
+    struct node * n= (struct node *) malloc(sizeof(struct node));
+ (*n).index=i;
+ (*n).next=NULL;
+ (*bot).next=n;
+ q[i]=v;
+ bot=n;
+   
+	}
+ }
+}
+top=(*top).next;
+
+depth++;
+}
+}
 int main(int argc, char ** argv)
 {
  // 1. Get a platform.
@@ -132,16 +200,124 @@ printf("success");
  cl_int * Graph = (cl_int * ) malloc(sizeof(cl_int)*NWITEMS*NWITEMS);
  cl_int * q = (cl_int * ) malloc(sizeof(cl_int)*NWITEMS);
  cl_int * prevstart = (cl_int * ) malloc(sizeof(cl_int)*NWITEMS*NWITEMS);
- for (int i=0; i<n1; i++){
-    for(int j=0; j<NWITEMS; j++){
-	Graph[i*NWITEMS+j]= (((i+1)*NWITEMS)/(j+23))%100;
+  srand(time(0));
+ int rx[NWITEMS];
+  
+  for (int mx=0; mx < NWITEMS*NWITEMS; mx++){
+    Graph[mx]=-1;
+	}
+	for (int y=0; y < NWITEMS; y++){
+  rx[y]=rand()%100;
+  Graph[y*NWITEMS+y]=rx[y];
+  q[y]=-1;
+	//prevstart[i*NWITEMS+j]=0;
+  }
+ for (int i=0; i<NWITEMS; i++){
+
+    for(int j=i+1; j<NWITEMS; j++){
+	
+	int r2 = rand()%10;
+	if (r2 > 8 ){
+	Graph[i*NWITEMS+j]= rx[j];
+	Graph[j*NWITEMS+i]=rx[i];
+	
+	}
+	
+	
+	
 	
 	}
 	}
-	q[0]=1;
+	
+	FILE * file=fopen( "Graph1.txt", "w");
+     for (int i=0; i<NWITEMS; i++){
+
+    for(int j=0; j<NWITEMS; j++){
+	
+         fprintf(file,"%i ",Graph[i*NWITEMS+j]);
+	}
+	fprintf(file,"\n");
+	}
+	fclose(file);
+	/*Graph[90]=9;
+	Graph[76]=9;
+	Graph[90*512+17]=9;
+	Graph[76*512+87]=9;
+	Graph[76*512+302]=9;
+	Graph[76*512+23]=63;
+	Graph[17*512+57]=8;
+	Graph[17*512+8]=12;
+	Graph[57*512+108]=23;
+	Graph[108*512+57]=23;
+	Graph[87*512+99]=23;
+	Graph[302*512+509]=23;
+	Graph[509*512+65]=5;*/
+	q[0]=0;
  int i;
-for(i=0; i < NWITEMS-500; i++)
-printf("%i %i\n", i, q[i]);
+ printf("graph %i %i\n", Graph[79]);
+ top= (struct node *) malloc(sizeof(struct node));
+ (*top).index=0;
+ (*top).next=NULL;
+ bot=top;
+   struct timespec start, finish;
+	double elapsed;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+ int nr=rbfs(Graph, 5, q, NWITEMS, 1,0);
+  clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    printf( " rbfs program");
+    printf("Time elapsed %f secs", elapsed );
+ printf("node %i %i \n", nr, Graph[i]);
+ int tx=nr;
+ printf("path from node to root: ");
+while (tx != 0){
+
+ printf(" %i -> ",tx);
+ tx=q[tx];
+
+ }
+ printf("0 \n");
+ for(int j=0; j<NWITEMS; j++){
+	
+	q[j]=-1;
+	
+	}
+	q[0]=0;
+	
+	q[0]=0;
+ 
+// printf("graph %i %i\n", Graph[79]);
+ top= (struct node *) malloc(sizeof(struct node));
+ (*top).index=0;
+ (*top).next=NULL;
+ bot=top;
+    
+  clock_gettime(CLOCK_MONOTONIC, &start);
+ nr=lbfs(Graph, 5, q, NWITEMS, 1,0);
+  clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    printf( " lbfs program");
+    printf("Time elapsed %f secs", elapsed );
+ printf("node %i %i \n", nr, Graph[i]);
+  tx=nr;
+ printf("path from node to root: ");
+while (tx != 0){
+
+ printf(" %i -> ",tx);
+ tx=q[tx];
+
+ }
+ printf("0 \n");
+ for(int j=0; j<NWITEMS; j++){
+	
+	q[j]=-1;
+	
+	}
+	q[0]=0;
+	
+	
  cl_int * nit = (cl_int *) malloc(sizeof(cl_int));
  nit[0]=NWITEMS;
  cl_int * depth = (cl_int *) malloc(sizeof(cl_int));
@@ -171,20 +347,48 @@ printf("%i %i\n", i, q[i]);
   clSetKernelArg(kernel, 4, sizeof(buffer5), (void*) &buffer5);
  clSetKernelArg(kernel, 5, sizeof(buffer6), (void*) &buffer6);
   clSetKernelArg(kernel, 6, sizeof(buffer7), (void*) &buffer7);
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
  err=clEnqueueNDRangeKernel( queue,kernel,1,NULL,global_work_size,NULL, 0, NULL, NULL);
- if ( err == CL_INVALID_KERNEL  ){
+ /*if ( err == CL_INVALID_KERNEL  ){
 printf("invalid work group size %ui",err);
 }else{
 if (err == CL_SUCCESS){
 printf("success");
 }
-}
+}*/
  clFinish( queue );
+  clock_gettime(CLOCK_MONOTONIC, &finish);
+    elapsed = (finish.tv_sec - start.tv_sec);
+    elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    printf( " opencl program");
+    printf("Time elapsed %f secs", elapsed );
  // 7. Look at the results via synchronous buffer map.
- cl_int *ptr;
- ptr = (cl_int *) clEnqueueMapBuffer( queue,buffer3,CL_TRUE,CL_MAP_READ,0,NWITEMS*NWITEMS *sizeof(cl_int),0, NULL, NULL, NULL );
 
-//for(i=0; i < NWITEMS-500; i++)
- //printf("%i %i\n", i, ptr[i]);
+ cl_int *ptr;
+ ptr = (cl_int *) clEnqueueMapBuffer( queue,buffer2,CL_TRUE,CL_MAP_READ,0,NWITEMS*sizeof(cl_int),0, NULL, NULL, NULL );
+cl_int *ptr2;
+ ptr2 = (cl_int *) clEnqueueMapBuffer( queue,buffer5,CL_TRUE,CL_MAP_READ,0,sizeof(cl_int),0, NULL, NULL, NULL );
+//printf("depth %i\n",ptr2[0]);
+ cl_int *ptr3;
+ ptr3 = (cl_int *) clEnqueueMapBuffer( queue,buffer7,CL_TRUE,CL_MAP_READ,0,sizeof(cl_int),0, NULL, NULL, NULL );
+printf("node %i\n",ptr3[0]);
+ tx=ptr3[0];
+ /*for (i=0; i<NWITEMS; i++){
+  if (ptr[i] > -1){
+  printf("%i %i\n", i, ptr[i]);
+  }
+  
+ }
+ printf("path from node to root: ");
+ */
+while (tx != 0){
+
+ printf(" %i -> ",tx);
+ tx=ptr[tx];
+
+ }
+ printf("0 \n" );
  return 0;
 }
